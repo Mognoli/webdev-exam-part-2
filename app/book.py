@@ -4,7 +4,9 @@ from functools import wraps
 from users_policy import UsersPolicy
 import bleach
 import markdown
-from tools_cover import CoverSaver
+from tools_cover import CoverSaver, delete_cover
+from review import get_review, check_review_user
+from auth import check_rights
 
 bp = Blueprint('book', __name__, url_prefix='/book')
 
@@ -12,15 +14,17 @@ from app import db
 
 LIST_PARAMS = ['name', 'year', 'publ_house', 'author', 'volume']
 
+# Получение параметров
 def params(names_list):
     result = {}
     for name in names_list:
-        result[name] = request.form.get(name) or None
-        if name == 'volume':
+        result[name] = request.form.get(name)
+        if result[name] and name == 'volume' and result[name].isdigit():
             result[name] = int(result[name])
             
     return result
 
+# Запросы к БД
 def get_all_genre():
     query = "SELECT * FROM genres"
     with db.connection.cursor(named_tuple = True) as cursor:
@@ -35,32 +39,14 @@ def get_genre(id_book):
         genre_book = cursor.fetchall()
     return genre_book
 
-def update_book(book_form):
-    query = "UPDATE `books` SET `name` = %s, `short_desc` = %s, `year` = %s, `publ_house` = %s, `author` = %s, `volume` = %s WHERE `books`.`id` = %s;"
-    try:
-        with db.connection.cursor(named_tuple = True) as cursor:
-          cursor.execute(query, (book_form.name, book_form.short_desc, book_form.year, book_form.publ_house, book_form.author, book_form.volume, book_form.id, ))
-    except:
-            db.connection.rollback()
-            flash("При обновлении данных произошла ошибка", "danger")
-
-    
-def add_book(book_form):
-    query = '''
-    INSERT INTO `books` (`name`, `short_desc`, `year`, `publ_house`, `author`, `volume`, `cover`) 
-    VALUES (%(name)s, %(short_desc)s, %(year)s, %(publ_house)s, %(author)s, %(volume)s, %(cover)s);
-    '''
+def delete_connection(id_book):
+    query = "DELETE FROM book_genre WHERE book_genre.book = %s"
     with db.connection.cursor(named_tuple = True) as cursor:
         try:
-            cursor.execute(query, (book_form))
+            cursor.execute(query, (id_book, ))
             db.connection.commit()
-            flash("Книга успешно добавлена", "success")
-            return cursor.lastrowid
         except:
             db.connection.rollback()
-            flash("При добавлении произошла ошибка", "danger")
-    # query_serch = 'SELECT books.i'
-
 
 def add_connection(id_book, id_genre):
     query = 'INSERT INTO `book_genre` (`book`, `genre`) VALUES (%s, %s);'
@@ -72,9 +58,16 @@ def add_connection(id_book, id_genre):
             db.connection.rollback()
             flash("При обновлении связи произошла ошибка", "danger")
     
-
+# Запрос на удаление книги
 @bp.route("/<int:book_id>/delete_book", methods=['POST'])
+@check_rights("delete")
 def delete_book(book_id):
+    query_for_cover = 'SELECT * FROM books WHERE books.id=%s'
+    with db.connection.cursor(named_tuple = True) as cursor:
+        cursor.execute(query_for_cover, (book_id, ))
+        this_book = cursor.fetchall()[0]
+    cover_id = this_book.cover
+    delete_cover(cover_id)
     query = "DELETE FROM books WHERE books.id = %s"
     with db.connection.cursor(named_tuple = True) as cursor:
         try:
@@ -83,46 +76,171 @@ def delete_book(book_id):
             flash("Книга успешно удалена", "success")
         except:
             db.connection.rollback()
-            flash("При удалении произошла ошибка", "danger")
+            flash("При удалении книги произошла ошибка", "danger")
     return redirect(url_for("index"))
 
-@bp.route("/<int:book_id>/show_book", methods=['POST', 'GET'])
+@bp.route("/<int:book_id>/show_book")
+@check_rights("show")
 def show_book(book_id):
+    # Книга
     query = "SELECT * FROM books WHERE id = %s"
     with db.connection.cursor(named_tuple = True) as cursor:
         cursor.execute(query, (book_id, ))
         db_book = cursor.fetchone()
+    # Описание и переделывание в html 
     short_desc = markdown.markdown(db_book.short_desc)
+    # Подгрузка жанров книги
     list_genres = []
     genres = get_genre(book_id)
     for genre in genres:
         list_genres.append(genre.name)
+    # Рецензии
+    review_list, value_reviews = get_review(book_id)
+    text_rew_list = {}
+    for review in review_list:
+        text_rew_list[review.id] = markdown.markdown(review.text_rew)
+    check_review = check_review_user(book_id)
+    return render_template('book/show_book.html', 
+                           book = db_book, list_genre = list_genres, 
+                           short_desc = short_desc, review_list = review_list, 
+                           text_rew_list = text_rew_list, value_reviews = value_reviews, 
+                           check_review = check_review)
 
-    #загрузка обложки
+# ошибка при добавлении книги
+def error_create(book_genres, book_info):
+    all_genres = get_all_genre()
+    return render_template('book/new.html', genres = all_genres, book_genres = book_genres, book_info = book_info)
 
-    return render_template('book/show_book.html', book = db_book, list_genre = list_genres, short_desc = short_desc)
-
-@bp.route("/new")
+@bp.route("/new", methods=['POST', 'GET'])
+@check_rights("create")
 def new_book():
+    if request.method == "POST":
+        # Основные параметры книги и ее добавление
+        book_params = params(LIST_PARAMS)
+        genres_list_str = request.form.getlist('genres')
+        genres_list_int = []
+        for genre in genres_list_str:
+            genres_list_int.append(int(genre))
+
+        # Работа с описанием 
+        short_desc = request.form.get("short_desc")
+        if not short_desc:
+                flash("При добавлении книги произошла ошибка", "danger")
+                return error_create(genres_list_int, book_params)
+        short_desc = bleach.clean(short_desc)
+        book_params["short_desc"] = short_desc
+
+        # Добавление обложек
+        f = request.files.get('background_img')
+        if f and f.filename:
+            cover = CoverSaver(f).save()
+        else:
+            flash("При добавлении книги произошла ошибка", "danger")
+            return error_create(genres_list_int, book_params)
+
+        # Проверка на то что все поля есть
+        for param in LIST_PARAMS:
+            if not book_params[param]:
+                flash("При добавлении книги произошла ошибка", "danger")
+                return error_create(genres_list_int, book_params)
+
+        if not genres_list_int:
+            flash("При добавлении книги произошла ошибка", "danger")
+            return error_create(genres_list_int, book_params)
+
+        book_params["cover"] = cover
+
+        # Добавление книги
+        query = '''
+        INSERT INTO `books` (`name`, `short_desc`, `year`, `publ_house`, `author`, `volume`, `cover`) 
+        VALUES (%(name)s, %(short_desc)s, %(year)s, %(publ_house)s, %(author)s, %(volume)s, %(cover)s);
+        '''
+        with db.connection.cursor(named_tuple = True) as cursor:
+            try:
+                cursor.execute(query, (book_params))
+                db.connection.commit()
+                flash("Книга успешно добавлена", "success")
+                book_id = cursor.lastrowid
+            except:
+                db.connection.rollback()
+                flash("При добавлении произошла ошибка", "danger")
+                return error_create(genres_list_int, book_params)
+
+        # Добавление жанров
+        for genre in genres_list_int:
+            add_connection(book_id, genre)
+
+        return redirect(url_for("index"))
+    
+    # Метод GET = 1ая  загрузка страницы
     genres = get_all_genre()
-    return render_template('book/new.html', genres = genres)
+    return render_template('book/new.html', genres = genres, book_genres = {}, book_info = {})
 
-@bp.route("/create_book", methods=['POST', 'GET'])
-def create_book():
-    # Добавление обложек
-    f = request.files.get('background_img')
-    if f and f.filename:
-        cover = CoverSaver(f).save()
-    # Основные параметры книги и ее добавление
-    book_params = params(LIST_PARAMS)
-    short_desc = request.form.get("short_desc") or None
-    short_desc = bleach.clean(short_desc)
-    book_params["short_desc"] = short_desc
-    book_params["cover"] = cover
-    book_id = add_book(book_params)
-    # Добавление жанров
-    genres_list = request.form.getlist('genres')
-    for genre in genres_list:
-         add_connection(book_id, int(genre))
+# Ошибка при изменении книги
+def error_edit(book_genres, book_info):
+    all_genres = get_all_genre()
+    return render_template('book/edit.html', genres = all_genres, book_genres = book_genres, book_info = book_info)
 
-    return redirect(url_for("index"))
+@bp.route("/<int:book_id>/edit", methods=['POST', 'GET'])
+@check_rights("edit")
+def edit_book(book_id):
+    if request.method == "POST":
+        # Основные параметры и жанры
+        book_params = params(LIST_PARAMS)
+        genres_list_str = request.form.getlist('genres')
+        genres_list_int = []
+        for genre in genres_list_str:
+            genres_list_int.append(int(genre))
+
+        # Работа с описанием
+        short_desc = request.form.get("short_desc")
+        if not short_desc:
+                flash("При обнавлении книги произошла ошибка", "danger")
+                return error_edit(genres_list_int, book_params)
+        short_desc = bleach.clean(short_desc)
+        book_params["short_desc"] = short_desc
+        book_params["id"] = book_id
+
+        # Проверка наличия всех параметров
+        for param in LIST_PARAMS:
+            if not book_params[param]:
+                flash("При обнавлении книги произошла ошибка", "danger")
+                return error_edit(genres_list_int, book_params)
+
+        if not genres_list_int:
+            flash("При обнавлении книги произошла ошибка", "danger")
+            return error_edit(genres_list_int, book_params)
+
+        # Изменение жанров
+        delete_connection(book_id)
+        for genre in genres_list_int:
+             add_connection(book_id, genre)
+
+        # Изменение информации о книге
+        query = '''
+        UPDATE `books` SET `name` = %(name)s, `short_desc` = %(short_desc)s, `year` = %(year)s, 
+        `publ_house` = %(publ_house)s, `author` = %(author)s, `volume` = %(volume)s WHERE `books`.`id` = %(id)s;'''
+        with db.connection.cursor(named_tuple = True) as cursor:
+            try:
+                cursor.execute(query, (book_params))
+                db.connection.commit()
+                flash("Книга успешно обнавлена", "success")
+            except:
+                db.connection.rollback()
+                flash("При обновлении данных произошла ошибка", "danger")
+                return error_edit(genres_list_int, book_params)
+
+        return redirect(url_for("index"))
+
+    # Метод GET = 1ая  загрузка страницы
+    query = "SELECT * FROM books WHERE id = %s"
+    with db.connection.cursor(named_tuple = True) as cursor:
+        cursor.execute(query, (book_id, ))
+        db_book = cursor.fetchone()
+    book_genres = []
+    genres = get_genre(book_id)
+    for genre in genres:
+        book_genres.append(genre.id)
+
+    all_genres = get_all_genre()
+    return render_template('book/edit.html', genres=all_genres, book_genres = book_genres, book_info = db_book)

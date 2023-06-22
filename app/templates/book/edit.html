@@ -2,5 +2,5 @@
 {% from "book/form.html" import form %}
 
 {% block content %}
-{{form(genres, 'new', url_for('book.new_book'), book_genres, book_info)}}
+{{form(genres, 'edit', url_for('book.edit_book', book_id=book_info.id), book_genres, book_info)}}
 {% endblock %}

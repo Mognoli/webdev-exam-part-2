@@ -49,6 +49,10 @@
                                     {{ current_user.login }}
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-dark">
+                                    {% if current_user.is_authenticated and current_user.can("review_moder", user) %}
+                                    <li><a class="dropdown-item"
+                                        href="{{ url_for('review.review_moder') }}">Модерация рецензий</a></li>
+                                    {% endif %}
                                     <li><a class="dropdown-item"
                                             href="{{ url_for('auth.logout') }}">Выход</a></li>
                                 </ul>
@@ -89,5 +93,10 @@
             integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN"
             crossorigin="anonymous"></script>
     </body>
-
+    <footer class="bg-white text-center text-lg-start">
+        <div class="text-center p-3">
+          © 2023 Березина Е. А. 211-351
+        </div>
+        <!-- Copyright -->
+      </footer>
 </html>

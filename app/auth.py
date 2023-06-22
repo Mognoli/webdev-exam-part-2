@@ -7,6 +7,7 @@ bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 from app import db
 
+# Загрузка пользователя из БД
 def load_user(user_id):
     query = "SELECT * FROM users WHERE id = %s;"
     with db.connection.cursor(named_tuple = True) as cursor:
@@ -14,6 +15,7 @@ def load_user(user_id):
         user = cursor.fetchone()
     return user
 
+# Декоратор проверки прав
 def check_rights(action):
     def decorator(func):
         @wraps(func)
@@ -24,7 +26,7 @@ def check_rights(action):
                 user = load_user(user_id)
             if not current_user.can(action, user):
                 flash("Недостаточно прав для доступа к странице", "warning")
-                return redirect(url_for("users"))
+                return redirect(url_for("index"))
             return func(*args, **kwargs)
         return wrapper
     return decorator
@@ -50,7 +52,8 @@ class User(UserMixin):
         if method:
             return method()
         return False
-        
+
+# Авторизация пользователя
 def authentificate_user(login, password):
     query = "SELECT * FROM users WHERE login = %s AND HASH	= SHA2(%s, 256);"
     with db.connection.cursor(named_tuple = True) as cursor:
@@ -62,6 +65,7 @@ def authentificate_user(login, password):
         return user
     return None
 
+# Загрузка пользователя из БД
 def load_user(user_id):
     query = "SELECT * FROM users WHERE id = %s;"
     cursor = db.connection.cursor(named_tuple = True)
@@ -73,6 +77,7 @@ def load_user(user_id):
         return user
     return None
 
+# Объевление переменных для работы проверки авторизованного пользователя
 def init_login_manager(app):
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -81,13 +86,13 @@ def init_login_manager(app):
     login_manager.login_message_category = 'warning'
     login_manager.user_loader(load_user)
 
+# Страница авторизации
 @bp.route('/login', methods = ['POST', 'GET'])
 def login():
     if request.method == "POST":
         user_login = request.form["loginInput"]
         user_password = request.form["passwordInput"]
         remember_me = request.form.get('remember_me') == 'on'
-
 
         auth_user = authentificate_user(user_login, user_password)
         if auth_user:
@@ -98,9 +103,9 @@ def login():
             
         flash("Введены неверные логин и/или пароль", "danger") 
 
-
     return render_template('user/login.html')
 
+# Разлогирование
 @bp.route('/logout')
 def logout():
     logout_user()

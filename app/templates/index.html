@@ -68,12 +68,13 @@
                     </td>    
                     <td>
                         <div class="btn-group" role="group">
-
                                 <a class="btn btn-success" href="{{ url_for('book.show_book', book_id=book.id)}}">Просмотр</a>
-
-                                <a class="btn btn-primary" href="">Редактировать</a>
-
+                                {% if current_user.is_authenticated and current_user.can("edit", user) %}
+                                <a class="btn btn-primary" href="{{ url_for('book.edit_book', book_id=book.id)}}">Редактировать</a>
+                                {% endif %}
+                                {% if current_user.is_authenticated and current_user.can("delete", user) %}
                                 <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" data-url="{{ url_for('book.delete_book', book_id = book.id)}}" data-name="{{book.name}}"> Удалить </button>
+                                {% endif %}
                         </div>
                     </td>    
                 </tr>
@@ -82,7 +83,9 @@
         </table>
     </div>
     {{pagination(page, page_count, request.endpoint)}}
+    {% if current_user.is_authenticated and current_user.can("create", user) %}
     <a class="btn btn-success" href="{{ url_for('book.new_book') }}">Добавить книгу</a>
+    {% endif %}
 </div>
 
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">

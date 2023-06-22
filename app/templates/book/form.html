@@ -1,51 +1,53 @@
-{% macro form(genres) %}
-<form method="POST" action="{{ url_for('book.create_book') }}"
+{% macro form(genres, action, url, book_genres={}, book_info={}) %}
+<form method="POST" action="{{ url }}"
     enctype="multipart/form-data" class="container py-5">
     <div class="row mb-4">
         <div class="col">
             <div class="form-outline">
                 <label class="form-label" for="form6Example1">Название</label>
                 <input type="text" id="form6Example1" class="form-control"
-                name="name">
+                name="name" value="{{book_info.name}}">
             </div>
         </div>
+        {% if action=='new' %}
         <div class="mb-3">
             <label for="background_img">Обложка</label>
             <input class="form-control" type="file" name="background_img"
                 id="background_img" name="cover">
         </div>
+        {% endif %}
         <label class="form-label" for="form6Example1">Жанры</label>
         <select class="form-select" multiple
             aria-label="multiple select example" name="genres">
             {% for genre in genres %}
-            <option value="{{genre.id}}">{{genre.name}}</option>
+            <option value="{{genre.id}}"{% if genre.id in book_genres %}selected{% endif %}>{{genre.name}}</option>
             {% endfor %}
         </select>
         <div class="col">
             <div class="form-outline">
                 <label class="form-label" for="form6Example2">Автор</label>
                 <input type="text" id="form6Example2" class="form-control"
-                    name="author">
+                    name="author" value="{{book_info.author}}">
             </div>
         </div>
     </div>
     <div class="form-outline mb-4">
         <label class="form-label" for="form6Example3">Год создания</label>
-        <input type="text" id="form6Example3" class="form-control" name="year">
+        <input type="text" id="form6Example3" class="form-control" name="year" value="{{book_info.year}}">
     </div>
     <div class="form-outline mb-4">
         <label class="form-label" for="form6Example4">Издательство</label>
         <input type="text" id="form6Example4" class="form-control"
-            name="publ_house">
+            name="publ_house" value="{{book_info.publ_house}}">
     </div>
     <div class="form-outline mb-4">
         <label class="form-label" for="form6Example5">Кол-во страниц</label>
         <input type="text" id="form6Example5" class="form-control"
-            name="volume">
+            name="volume" value="{{book_info.volume}}">
     </div>
     <div class="form-outline mb-4">
         <label class="form-label" for="my-text-area">Краткое описание</label>
-        <textarea id="my-text-area" name="short_desc"></textarea>
+        <textarea id="my-text-area" name="short_desc">{{book_info.short_desc}}</textarea>
         <script>
                   const easymde = new EasyMDE({
                     element: document.getElementById('my-text-area'),
