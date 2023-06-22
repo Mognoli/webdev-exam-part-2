@@ -32,9 +32,11 @@
                     <th>
                         Жанры
                     </th>
+                    {% if current_user.is_authenticated %} 
                     <th>
                         Действия
                     </th>
+                    {% endif %}
                 </tr>        
             </thead>
             <tbody>
@@ -65,7 +67,8 @@
                         {% for genre in list_genre[book.id] %}
                         {{genre}}
                         {%endfor%}
-                    </td>    
+                    </td>   
+                    {% if current_user.is_authenticated %} 
                     <td>
                         <div class="btn-group" role="group">
                                 <a class="btn btn-success" href="{{ url_for('book.show_book', book_id=book.id)}}">Просмотр</a>
@@ -76,7 +79,8 @@
                                 <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" data-url="{{ url_for('book.delete_book', book_id = book.id)}}" data-name="{{book.name}}"> Удалить </button>
                                 {% endif %}
                         </div>
-                    </td>    
+                    </td> 
+                    {% endif %}   
                 </tr>
                 {% endfor %}
             </tbody>

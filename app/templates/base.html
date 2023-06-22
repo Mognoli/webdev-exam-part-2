@@ -23,7 +23,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Gentium+Book+Plus:wght@400;700&family=Jost:wght@300;400&display=swap" rel="stylesheet">
     </head>
 
-    <body>
+    <body class="d-flex flex-column min-vh-100">
         <header>
 
             <nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom border-success">
@@ -38,17 +38,17 @@
                     </button>
                     <div class="collapse navbar-collapse"
                         id="navbarSupportedContent">
-                        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                        <ul class="navbar-nav ms-auto mb-2 mb-lg-0 mx-5 px-5">
 
                             {% if current_user.is_authenticated %}
 
                             <li class="nav-item dropdown">
-                                <button class="btn btn-dark dropdown-toggle"
+                                <button class="btn border border-success roundeds dropdown-toggle btn-success"
                                     data-bs-toggle="dropdown"
                                     aria-expanded="false">
                                     {{ current_user.login }}
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-dark">
+                                <ul class="dropdown-menu border border-success rounded">
                                     {% if current_user.is_authenticated and current_user.can("review_moder", user) %}
                                     <li><a class="dropdown-item"
                                         href="{{ url_for('review.review_moder') }}">Модерация рецензий</a></li>
@@ -71,7 +71,7 @@
             </nav>
         </header>
 
-        <main class="bg-success bg-opacity-10">
+        <main class="bg-success bg-opacity-10 flex-grow-1">
             {% with msgs = get_flashed_messages(with_categories = true) %}
             {% for category, msg in msgs %}
             <div class="alert alert-{{ category }} alert-dismissible fade show"
@@ -92,11 +92,11 @@
             src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN"
             crossorigin="anonymous"></script>
+        <footer class="bg-white text-center text-lg-start flex-grow-0 flex-shrink-0">
+            <div class="text-center p-3">
+                © 2023 Березина Е. А. 211-351
+            </div>
+        </footer>
     </body>
-    <footer class="bg-white text-center text-lg-start">
-        <div class="text-center p-3">
-          © 2023 Березина Е. А. 211-351
-        </div>
-        <!-- Copyright -->
-      </footer>
+    
 </html>
