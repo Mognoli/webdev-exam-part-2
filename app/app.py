@@ -1,4 +1,4 @@
-from flask import Flask, render_template, session, request, redirect, url_for, flash
+from flask import Flask, render_template, session, request, redirect, url_for, flash, send_from_directory
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from mysql_db import MySQL
 import mysql.connector
@@ -44,4 +44,8 @@ def index():
     return render_template('index.html', books = db_books, list_genre = genre_book, page = page, page_count = page_count)
 
 # Для отображения обложек
+@app.route('/images/<cover_id>')
+def cover(cover_id):
+    # название
+    return send_from_directory(app.config['UPLOAD_FOLDER'], Название)
 

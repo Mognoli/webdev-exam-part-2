@@ -1,37 +1,57 @@
-{% extends 'base.html' %}
-
-{% block content %}
-<form>
+{% macro form(genres) %}
+<form method="POST" action="{{ url_for('book.create_book') }}"
+    enctype="multipart/form-data" class="container py-5">
     <div class="row mb-4">
-      <div class="col">
-        <div class="form-outline">
-          <input type="text" id="form6Example1" class="form-control" />
-          <label class="form-label" for="form6Example1">Название</label>
+        <div class="col">
+            <div class="form-outline">
+                <label class="form-label" for="form6Example1">Название</label>
+                <input type="text" id="form6Example1" class="form-control"
+                name="name">
+            </div>
         </div>
-      </div>
-      <div class="col">
-        <div class="form-outline">
-          <input type="text" id="form6Example2" class="form-control" />
-          <label class="form-label" for="form6Example2">Автор</label>
+        <div class="mb-3">
+            <label for="background_img">Обложка</label>
+            <input class="form-control" type="file" name="background_img"
+                id="background_img" name="cover">
         </div>
-      </div>
+        <label class="form-label" for="form6Example1">Жанры</label>
+        <select class="form-select" multiple
+            aria-label="multiple select example" name="genres">
+            {% for genre in genres %}
+            <option value="{{genre.id}}">{{genre.name}}</option>
+            {% endfor %}
+        </select>
+        <div class="col">
+            <div class="form-outline">
+                <label class="form-label" for="form6Example2">Автор</label>
+                <input type="text" id="form6Example2" class="form-control"
+                    name="author">
+            </div>
+        </div>
     </div>
     <div class="form-outline mb-4">
-      <input type="text" id="form6Example3" class="form-control" />
-      <label class="form-label" for="form6Example3">Год создания</label>
+        <label class="form-label" for="form6Example3">Год создания</label>
+        <input type="text" id="form6Example3" class="form-control" name="year">
     </div>
     <div class="form-outline mb-4">
-      <input type="text" id="form6Example4" class="form-control" />
-      <label class="form-label" for="form6Example4">Издательство</label>
+        <label class="form-label" for="form6Example4">Издательство</label>
+        <input type="text" id="form6Example4" class="form-control"
+            name="publ_house">
     </div>
     <div class="form-outline mb-4">
-      <input type="email" id="form6Example5" class="form-control" />
-      <label class="form-label" for="form6Example5">Кол-во страниц</label>
+        <label class="form-label" for="form6Example5">Кол-во страниц</label>
+        <input type="text" id="form6Example5" class="form-control"
+            name="volume">
     </div>
     <div class="form-outline mb-4">
-      <textarea class="form-control" id="form6Example7" rows="4"></textarea>
-      <label class="form-label" for="form6Example7">Краткое описание</label>
+        <label class="form-label" for="my-text-area">Краткое описание</label>
+        <textarea id="my-text-area" name="short_desc"></textarea>
+        <script>
+                  const easymde = new EasyMDE({
+                    element: document.getElementById('my-text-area'),
+                  });
+                </script>
     </div>
-    <button type="submit" class="btn btn-primary btn-block mb-4">Ок</button>
-  </form>
-{% endblock %}
+    <button type="submit" class="btn btn-success btn-block mb-4">Ок</button>
+</form>
+{% endmacro %}
