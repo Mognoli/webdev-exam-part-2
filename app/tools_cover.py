@@ -1,5 +1,4 @@
 import hashlib
-import uuid
 import os
 from werkzeug.utils import secure_filename
 from app import db, app
@@ -7,8 +6,8 @@ from flask import flash
 
 def add_cover(params):
     query = '''
-    INSERT INTO `covers` (`name`, `mime_type`, `md5_hash`, `book`) 
-    VALUES (%(name)s, %(mime_type)s, %(md5_hash)s, %(book));
+    INSERT INTO `covers` (`name`, `mime_type`, `md5_hash`) 
+    VALUES (%(name)s, %(mime_type)s, %(md5_hash)s);
     '''
     with db.connection.cursor(named_tuple = True) as cursor:
         try:
@@ -36,11 +35,10 @@ def chek_cover(hash):
     with db.connection.cursor(named_tuple = True) as cursor:
         try:
             cursor.execute(query, (hash, ))
-            db.connection.commit()
+            db_cover = cursor.fetchall()
+            return db_cover
         except:
             db.connection.rollback()
-
-
 
 class CoverSaver:
     def __init__(self, file):
@@ -49,21 +47,20 @@ class CoverSaver:
     def save(self):
         self.img = self.__find_by_md5_hash()
         if self.img is not None:
-            return self.img
+            return self.img.id
         file_name = secure_filename(self.file.filename)
-        self.img = Image(
-            id=str(uuid.uuid4()),
-            file_name=file_name,
-            mime_type=self.file.mimetype,
-            md5_hash=self.md5_hash)
-        self.file.save(
-            os.path.join(app.config['UPLOAD_FOLDER'],
-                         self.img.storage_filename))
-        db.session.add(self.img)
-        db.session.commit()
-        return self.img
+        mimetype = file_name.split('.')[1]
+        params_to_db = {
+            "md5_hash": self.md5_hash,
+            "name": file_name,
+            "mime_type": mimetype,
+        }
+        id_cover = add_cover(params_to_db)
+        storage_name = str(id_cover) + '.' + mimetype
+        self.file.save(os.path.join(app.config['UPLOAD_FOLDER'], storage_name))
+        return id_cover
 
     def __find_by_md5_hash(self):
         self.md5_hash = hashlib.md5(self.file.read()).hexdigest()
         self.file.seek(0)
-        return db.session.execute(db.select(Image).filter(Image.md5_hash == self.md5_hash)).scalar()
+        return chek_cover(self.md5_hash)

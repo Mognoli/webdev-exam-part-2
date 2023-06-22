@@ -17,12 +17,16 @@
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css" />
         <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css')}}">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Gentium+Book+Plus:wght@400;700&family=Jost:wght@300;400&display=swap" rel="stylesheet">
     </head>
 
     <body>
         <header>
 
-            <nav class="navbar navbar-expand-lg bg-body-tertiary">
+            <nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom border-success">
                 <div class="container-fluid">
                     <a class="navbar-brand" href="{{ url_for('index') }}">Главная</a>
                     <button class="navbar-toggler" type="button"
@@ -63,7 +67,7 @@
             </nav>
         </header>
 
-        <main>
+        <main class="bg-success bg-opacity-10">
             {% with msgs = get_flashed_messages(with_categories = true) %}
             {% for category, msg in msgs %}
             <div class="alert alert-{{ category }} alert-dismissible fade show"

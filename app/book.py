@@ -4,6 +4,7 @@ from functools import wraps
 from users_policy import UsersPolicy
 import bleach
 import markdown
+from tools_cover import CoverSaver
 
 bp = Blueprint('book', __name__, url_prefix='/book')
 
@@ -46,8 +47,8 @@ def update_book(book_form):
     
 def add_book(book_form):
     query = '''
-    INSERT INTO `books` (`name`, `short_desc`, `year`, `publ_house`, `author`, `volume`) 
-    VALUES (%(name)s, %(short_desc)s, %(year)s, %(publ_house)s, %(author)s, %(volume)s);
+    INSERT INTO `books` (`name`, `short_desc`, `year`, `publ_house`, `author`, `volume`, `cover`) 
+    VALUES (%(name)s, %(short_desc)s, %(year)s, %(publ_house)s, %(author)s, %(volume)s, %(cover)s);
     '''
     with db.connection.cursor(named_tuple = True) as cursor:
         try:
@@ -108,11 +109,16 @@ def new_book():
 
 @bp.route("/create_book", methods=['POST', 'GET'])
 def create_book():
+    # Добавление обложек
+    f = request.files.get('background_img')
+    if f and f.filename:
+        cover = CoverSaver(f).save()
     # Основные параметры книги и ее добавление
     book_params = params(LIST_PARAMS)
     short_desc = request.form.get("short_desc") or None
     short_desc = bleach.clean(short_desc)
     book_params["short_desc"] = short_desc
+    book_params["cover"] = cover
     book_id = add_book(book_params)
     # Добавление жанров
     genres_list = request.form.getlist('genres')
