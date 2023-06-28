@@ -53,6 +53,10 @@
                                     <li><a class="dropdown-item"
                                         href="{{ url_for('review.review_moder') }}">Модерация рецензий</a></li>
                                     {% endif %}
+                                    {% if current_user.is_authenticated and current_user.can("review_user", user) %}
+                                    <li><a class="dropdown-item"
+                                        href="{{ url_for('review.review_user') }}">Мои рецензии</a></li>
+                                    {% endif %}
                                     <li><a class="dropdown-item"
                                             href="{{ url_for('auth.logout') }}">Выход</a></li>
                                 </ul>

@@ -60,6 +60,7 @@ def add_connection(id_book, id_genre):
     
 # Запрос на удаление книги
 @bp.route("/<int:book_id>/delete_book", methods=['POST'])
+@login_required
 @check_rights("delete")
 def delete_book(book_id):
     query_for_cover = 'SELECT * FROM books WHERE books.id=%s'
@@ -80,6 +81,7 @@ def delete_book(book_id):
     return redirect(url_for("index"))
 
 @bp.route("/<int:book_id>/show_book")
+@login_required
 @check_rights("show")
 def show_book(book_id):
     # Книга
@@ -112,6 +114,7 @@ def error_create(book_genres, book_info):
     return render_template('book/new.html', genres = all_genres, book_genres = book_genres, book_info = book_info)
 
 @bp.route("/new", methods=['POST', 'GET'])
+@login_required
 @check_rights("create")
 def new_book():
     if request.method == "POST":
@@ -182,6 +185,7 @@ def error_edit(book_genres, book_info):
     return render_template('book/edit.html', genres = all_genres, book_genres = book_genres, book_info = book_info)
 
 @bp.route("/<int:book_id>/edit", methods=['POST', 'GET'])
+@login_required
 @check_rights("edit")
 def edit_book(book_id):
     if request.method == "POST":

@@ -11,14 +11,16 @@
             <li class="list-group-item px-4">
                 оценка: {{review.grade}}</li>
             <li class="list-group-item px-4">{{ review.created_at }}</li>
-            <li>
-                <div class="btn-group" role="group">
+            {% if review.statuses==1 %}
+                <li>
+                    <div class="btn-group" role="group">
 
-                    <a class="btn btn-success" href="{{ url_for('review.update_statuse_true', review_id = review.id) }}">Одобрить</a>
-                    <a class="btn btn-danger" href="{{ url_for('review.update_statuse_false', review_id = review.id) }}">Отклонить</a>
-                    
-                </div>
-            </li>
+                        <a class="btn btn-success" href="{{ url_for('review.update_statuse_true', review_id = review.id) }}">Одобрить</a>
+                        <a class="btn btn-danger" href="{{ url_for('review.update_statuse_false', review_id = review.id) }}">Отклонить</a>
+                        
+                    </div>
+                </li>
+            {% endif %}
         </ul>
     </div>
 {% endblock %}

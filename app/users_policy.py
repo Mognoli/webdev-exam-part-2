@@ -22,4 +22,9 @@ class UsersPolicy:
         if current_user.is_moder():
             return True
         return False
+
+    def review_user(self):
+        if current_user.is_user():
+            return True
+        return False
     

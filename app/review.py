@@ -50,6 +50,19 @@ def get_review_id(id_review):
         cursor.execute(query, (id_review, ))
         review = cursor.fetchone()
     return review
+
+def ger_review_user(user_id):
+    query = '''
+    SELECT review.*, books.name AS book_name, statuses.name AS statuses_name 
+    FROM review  LEFT JOIN books ON review.book=books.id LEFT JOIN statuses
+     ON review.statuses=statuses.id WHERE review.user=%s ORDER BY review.created_at DESC
+    LIMIT %s OFFSET %s
+    '''
+    with db.connection.cursor(named_tuple = True) as cursor:
+        cursor.execute(query, (user_id, ))
+        review = cursor.fetchone()
+    return review
+
     
 # Метод для создания рецензии
 @bp.route("/<int:book_id>/create_review", methods=['POST'])
@@ -63,38 +76,68 @@ def create_review(book_id):
         'grade': grade,
         'text_rew': text_rew,
     }
-
+ 
     add_review(review_form)
 
     return redirect(url_for('book.show_book', book_id=book_id))
 
-# Страница с списком рецензий
-@bp.route("review_moder")
+# Страница с списком рецензий (модер)
+@bp.route("review_moder",  methods=['POST', 'GET'])
+@login_required
 @check_rights("review_moder")
 def review_moder():
     # Получение номера страницы
     page = request.args.get('page', 1, type=int)
+    statues = request.args.get('statues', 0, type=int)
+
     # Запросы на рецензии и на их количество
     query = '''
-    SELECT review.*, users.login AS user_name, books.name AS book_name 
+    SELECT review.*, users.login AS user_name, books.name AS book_name, statuses.name AS statuses_name 
     FROM review  LEFT JOIN users ON review.user=users.id LEFT JOIN books 
-    ON review.book=books.id WHERE review.statuses=1 ORDER BY review.created_at DESC
+    ON review.book=books.id LEFT JOIN statuses ON review.statuses=statuses.id ORDER BY review.created_at DESC
     LIMIT %s OFFSET %s
     '''
-    query_count_review = "SELECT count(*) as page_count FROM review"
+    query_sort = '''
+    SELECT review.*, users.login AS user_name, books.name AS book_name, statuses.name AS statuses_name 
+    FROM review  LEFT JOIN users ON review.user=users.id LEFT JOIN books 
+    ON review.book=books.id LEFT JOIN statuses ON review.statuses=statuses.id WHERE review.statuses=%s ORDER BY review.created_at DESC
+    LIMIT %s OFFSET %s
+    '''
+    all_count_review_query = '''
+    SELECT count(*) as count_review FROM review 
+    '''
+    short_count_review_query = '''
+    SELECT count(*) as count_review FROM review LEFT JOIN statuses ON review.statuses=statuses.id WHERE review.statuses=%s
+    
+    '''
+    if request.method == "POST":
+        statues = int(request.form.get('statues'))
+
+
+    # Для самих рецензий
     with db.connection.cursor(named_tuple = True) as cursor:
-        cursor.execute(query, (COUNT_REVIEW_ON_PAGE, COUNT_REVIEW_ON_PAGE * (page - 1)))
+        if statues == 0:
+            cursor.execute(query, (COUNT_REVIEW_ON_PAGE, COUNT_REVIEW_ON_PAGE * (page - 1)))     
+        else:
+            statues_id = statues
+            cursor.execute(query_sort, (statues_id, COUNT_REVIEW_ON_PAGE, COUNT_REVIEW_ON_PAGE * (page - 1)))
         review_list = cursor.fetchall()
+    # Для количества
     with db.connection.cursor(named_tuple = True) as cursor:
-        cursor.execute(query_count_review)
-        db_counter = cursor.fetchone().page_count
+        if statues == 0:
+            cursor.execute(all_count_review_query)     
+        else:
+            statues_id = statues
+            cursor.execute(short_count_review_query, (statues_id, ))
+        count_review = cursor.fetchone().count_review
 
     # Количество страниц
-    page_count = math.ceil(db_counter / COUNT_REVIEW_ON_PAGE)
-    return render_template("review/review_moder.html", review_list = review_list, page = page, page_count = page_count)
+    page_count = math.ceil(count_review / COUNT_REVIEW_ON_PAGE)
+    return render_template("review/review_moder.html", review_list = review_list, count_review=count_review, page = page, page_count = page_count, statues = statues)
 
 # Просмотр рецензии для модерации
 @bp.route("/<int:review_id>")
+@login_required
 @check_rights("review_moder")
 def show_review(review_id):
     review = get_review_id(review_id)
@@ -119,6 +162,7 @@ def update_statuse_true(review_id):
 
 # Отклонение рецензии
 @bp.route("/<int:review_id>/false")
+@login_required
 @check_rights("review_moder")
 def update_statuse_false(review_id):
     query = 'UPDATE `review` SET `statuses` = 3 WHERE `review`.`id` = %s;'
@@ -131,3 +175,59 @@ def update_statuse_false(review_id):
             db.connection.rollback()
             flash("При обновлении статуса произошла ошибка", "danger")
     return redirect(url_for("review.review_moder"))
+
+# # Страница с списком рецензий (user)
+@bp.route("/review_user",  methods=['POST', 'GET'])
+@login_required
+@check_rights("review_user")
+def review_user():
+    # Получение номера страницы
+    page = request.args.get('page', 1, type=int)
+    statues = request.args.get('statues', 0, type=int)
+    # Запросы на рецензии и на их количество
+    query = '''
+    SELECT review.*, books.name AS book_name, statuses.name AS statuses_name 
+    FROM review  LEFT JOIN users ON review.user=users.id LEFT JOIN books 
+    ON review.book=books.id LEFT JOIN statuses ON review.statuses=statuses.id WHERE review.user=%s ORDER BY review.created_at DESC
+    LIMIT %s OFFSET %s
+    '''
+    query_sort = '''
+    SELECT review.*, users.login AS user_name, books.name AS book_name, statuses.name AS statuses_name 
+    FROM review  LEFT JOIN users ON review.user=users.id LEFT JOIN books 
+    ON review.book=books.id LEFT JOIN statuses ON review.statuses=statuses.id WHERE review.user=%s AND review.statuses=%s ORDER BY review.created_at DESC
+    LIMIT %s OFFSET %s
+    '''
+    all_count_review_query = '''
+    SELECT count(*) as count_review FROM review WHERE review.user=%s
+    '''
+    short_count_review_query = '''
+    SELECT count(*) as count_review FROM review LEFT JOIN statuses ON review.statuses=statuses.id WHERE review.user=%s AND review.statuses=%s
+    
+    '''
+
+    if request.method == "POST":
+        statues = int(request.form.get('statues'))
+
+    user_id = int(current_user.id)
+
+    with db.connection.cursor(named_tuple = True) as cursor:
+        if statues == 0:
+            cursor.execute(query, (user_id, COUNT_REVIEW_ON_PAGE, COUNT_REVIEW_ON_PAGE * (page - 1)))     
+        else:
+            statues_id = statues
+            cursor.execute(query_sort, (user_id, statues_id, COUNT_REVIEW_ON_PAGE, COUNT_REVIEW_ON_PAGE * (page - 1)))
+        review_list = cursor.fetchall()
+    
+    
+    # Для количества
+    with db.connection.cursor(named_tuple = True) as cursor:
+        if statues == 0:
+            cursor.execute(all_count_review_query, (user_id, ))     
+        else:
+            statues_id = statues
+            cursor.execute(short_count_review_query, (user_id, statues_id, ))
+        count_review = cursor.fetchone().count_review
+
+    # Количество страниц
+    page_count = math.ceil(count_review / COUNT_REVIEW_ON_PAGE)
+    return render_template("review/review_user.html", review_list = review_list, page = page, page_count = page_count, statues=statues, count_review=count_review)
